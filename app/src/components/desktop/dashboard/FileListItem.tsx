@@ -80,7 +80,7 @@ export function FileListItem({
                     onDrop(e, file.id);
                 }
             }}
-            className={`group grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] sm:grid-cols-[2rem_minmax(0,2fr)_6rem_8rem_2.5rem] gap-4 items-center px-4 py-3 rounded-lg cursor-pointer border border-transparent transition-all hover:bg-telegram-hover
+            className={`ios-list-row group grid grid-cols-[2rem_minmax(0,1fr)_2.5rem] sm:grid-cols-[2rem_minmax(0,2fr)_6rem_8rem_2.5rem] gap-4 items-center px-4 py-3 rounded-2xl cursor-pointer border border-transparent transition-all hover:bg-telegram-hover
                 ${selectedIds.includes(file.id) ? 'bg-telegram-primary/10 border-telegram-primary/20' : ''}
                 ${isDragOver ? 'ring-2 ring-telegram-primary bg-telegram-primary/20' : ''}
             `}

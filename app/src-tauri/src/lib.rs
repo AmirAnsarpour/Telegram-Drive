@@ -63,6 +63,7 @@ pub mod jni_cache;
 pub mod transcode;
 pub mod fmp4_remux;
 pub mod mp4_utils;
+pub mod sync_engine;
 
 
 /// Single source of truth for the Actix streaming server port.
@@ -568,6 +569,7 @@ pub fn run() {
             let loaded_config = vpn_optimizer::load_network_config(app.handle());
             let net_config = Arc::new(vpn_optimizer::NetworkConfig::new_with_config(loaded_config));
             app.manage(net_config.clone());
+            app.manage(Arc::new(sync_engine::SyncRuntime::default()));
 
             // Auto-start SOCKS5 bridge on startup if HTTP/HTTPS proxy is configured
             {
@@ -627,6 +629,7 @@ pub fn run() {
 
             // Start API server if enabled in settings
             restart_api_server(app.handle());
+            sync_engine::start_background_sync(app.handle().clone());
 
             // Start VPN keep-alive background task
             // Disabled on Android: unnecessary on mobile and spawn_blocking may
@@ -687,6 +690,7 @@ pub fn run() {
             commands::cmd_get_bandwidth,
             commands::cmd_delete_preview_for_message,
             commands::cmd_get_preview,
+            commands::cmd_get_office_preview,
             commands::cmd_clean_preview_cache,
             commands::cmd_logout,
             commands::cmd_scan_folders,
@@ -746,6 +750,10 @@ pub fn run() {
             commands::cmd_assign_folder_to_group,
             commands::cmd_update_group_order,
             commands::cmd_get_groups,
+            sync_engine::cmd_get_sync_config,
+            sync_engine::cmd_set_sync_config,
+            sync_engine::cmd_sync_now,
+            sync_engine::cmd_get_sync_status,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
@@ -786,4 +794,3 @@ pub fn run() {
         }
     });
 }
-

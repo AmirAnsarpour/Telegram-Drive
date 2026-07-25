@@ -331,6 +331,77 @@ pub async fn cmd_get_preview(
 }
 
 #[tauri::command]
+pub async fn cmd_get_office_preview(
+    message_id: i32,
+    folder_id: Option<i64>,
+    app_handle: tauri::AppHandle,
+    state: State<'_, TelegramState>,
+    bw_state: State<'_, Arc<BandwidthManager>>,
+) -> Result<String, String> {
+    let source = cmd_get_preview(
+        message_id,
+        folder_id,
+        app_handle.clone(),
+        state,
+        bw_state,
+    ).await?;
+    let source_path = std::path::PathBuf::from(&source);
+    if !source_path.exists() {
+        return Err("Could not prepare the Office document".into());
+    }
+    let output_dir = app_handle.path().app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("office-previews");
+    tokio::fs::create_dir_all(&output_dir).await.map_err(|e| e.to_string())?;
+    let output_path = output_dir.join(format!(
+        "{}.pdf",
+        source_path.file_stem().and_then(|v| v.to_str()).unwrap_or("document")
+    ));
+    if tokio::fs::metadata(&output_path).await.map(|m| m.len() > 0).unwrap_or(false) {
+        return Ok(output_path.to_string_lossy().to_string());
+    }
+
+    #[cfg(target_os = "macos")]
+    let candidates = [
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        "soffice",
+        "libreoffice",
+    ];
+    #[cfg(target_os = "windows")]
+    let candidates = [
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        "soffice.exe",
+    ];
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let candidates = ["soffice", "libreoffice", "soffice"];
+
+    let mut last_error = String::new();
+    for executable in candidates {
+        match tokio::process::Command::new(executable)
+            .arg("--headless")
+            .arg("--convert-to").arg("pdf")
+            .arg("--outdir").arg(&output_dir)
+            .arg(&source_path)
+            .output().await
+        {
+            Ok(output) if output.status.success() => {
+                if tokio::fs::metadata(&output_path).await.map(|m| m.len() > 0).unwrap_or(false) {
+                    return Ok(output_path.to_string_lossy().to_string());
+                }
+                last_error = String::from_utf8_lossy(&output.stderr).to_string();
+            }
+            Ok(output) => last_error = String::from_utf8_lossy(&output.stderr).to_string(),
+            Err(error) => last_error = error.to_string(),
+        }
+    }
+    Err(format!(
+        "Office preview requires LibreOffice. Install LibreOffice and try again. {}",
+        last_error
+    ))
+}
+
+#[tauri::command]
 pub async fn cmd_clean_preview_cache(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {

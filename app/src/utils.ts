@@ -36,6 +36,10 @@ export const isVideoFile   = (name: string) => endsWithAny(name, VIDEO_EXTENSION
 export const isAudioFile   = (name: string) => endsWithAny(name, AUDIO_EXTENSIONS);
 export const isImageFile   = (name: string) => endsWithAny(name, IMAGE_EXTENSIONS);
 export const isPdfFile     = (name: string) => name.toLowerCase().endsWith('.pdf');
+const OFFICE_EXTENSIONS = ['doc', 'docx', 'odt', 'xls', 'xlsx', 'ods', 'ppt', 'pptx', 'odp'] as const;
+const TEXT_EXTENSIONS = ['txt', 'md', 'markdown', 'json', 'jsonl', 'csv', 'tsv', 'log', 'xml', 'yaml', 'yml', 'toml', 'ini', 'conf', 'env', 'js', 'jsx', 'ts', 'tsx', 'css', 'scss', 'html', 'htm', 'py', 'rs', 'go', 'java', 'kt', 'swift', 'c', 'h', 'cpp', 'hpp', 'sh', 'zsh', 'ps1', 'sql'] as const;
+export const isOfficeFile  = (name: string) => endsWithAny(name, OFFICE_EXTENSIONS);
+export const isTextFile    = (name: string) => endsWithAny(name, TEXT_EXTENSIONS);
 export const isZipFile     = (name: string) => name.toLowerCase().endsWith('.zip');
 export const isRarFile     = (name: string) => name.toLowerCase().endsWith('.rar');
 export const isSevenZFile  = (name: string) => name.toLowerCase().endsWith('.7z');
@@ -291,4 +295,3 @@ export function createDragGhost(name: string, isFolder?: boolean, count?: number
     document.body.appendChild(ghost);
     return ghost;
 }
-

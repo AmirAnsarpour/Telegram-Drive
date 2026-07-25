@@ -1,7 +1,27 @@
-# Tauri + React + Typescript
+# Telegram Drive
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+A private desktop drive powered by Telegram, built with Tauri, Rust, React, and Bun.
 
-## Recommended IDE Setup
+## Requirements
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- Bun 1.3+
+- Rust stable
+- Platform prerequisites for Tauri 2
+
+## Development
+
+```sh
+bun install
+bun run tauri dev
+```
+
+## Production build
+
+```sh
+bun run build
+bun run tauri build
+```
+
+The native backend intentionally remains in Rust. It owns Telegram sessions,
+filesystem access, local streaming, archives, and transcoding without requiring
+a separate Node.js server.

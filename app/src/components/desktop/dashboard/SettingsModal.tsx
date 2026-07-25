@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, RotateCcw, Download, Upload, Trash2, HardDrive, Globe, Key, Copy, Check, RefreshCw, FolderArchive, Shield, Zap, Activity, Gauge, Wifi, ChevronDown, Link, Sparkles, Info, Clipboard, Monitor, Loader2, Languages, Play, Palette, Plus, Tag } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-shell';
+import { open as selectPath } from '@tauri-apps/plugin-dialog';
 import { toast } from 'sonner';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
@@ -28,6 +29,20 @@ interface ApiSettings {
     running: boolean;
 }
 
+interface SyncConfig {
+    enabled: boolean;
+    local_path: string;
+    interval_seconds: number;
+}
+
+interface SyncStatus {
+    running: boolean;
+    last_sync: number | null;
+    last_error: string | null;
+    uploaded: number;
+    downloaded: number;
+}
+
 type SettingsTab = 'general' | 'themes' | 'proxy' | 'vpn' | 'sharing' | 'about';
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -35,6 +50,47 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const { confirm } = useConfirm();
     const { t } = useTranslation();
     const [clearing, setClearing] = useState(false);
+    const [syncConfig, setSyncConfig] = useState<SyncConfig>({ enabled: false, local_path: '', interval_seconds: 30 });
+    const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+    const [syncBusy, setSyncBusy] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        invoke<SyncConfig>('cmd_get_sync_config').then(setSyncConfig).catch(() => {});
+        invoke<SyncStatus>('cmd_get_sync_status').then(setSyncStatus).catch(() => {});
+    }, [isOpen]);
+
+    const saveSyncConfig = useCallback(async (next: SyncConfig) => {
+        try {
+            const saved = await invoke<SyncConfig>('cmd_set_sync_config', { config: next });
+            setSyncConfig(saved);
+            toast.success(saved.enabled ? 'Folder sync enabled' : 'Folder sync settings saved');
+        } catch (error) {
+            toast.error(`Could not save sync settings: ${String(error)}`);
+        }
+    }, []);
+
+    const chooseSyncFolder = useCallback(async () => {
+        const selected = await selectPath({ directory: true, multiple: false, title: 'Choose Telegram Drive folder' });
+        if (typeof selected !== 'string') return;
+        const next = { ...syncConfig, local_path: selected };
+        setSyncConfig(next);
+        await saveSyncConfig(next);
+    }, [syncConfig, saveSyncConfig]);
+
+    const syncNow = useCallback(async () => {
+        setSyncBusy(true);
+        try {
+            const status = await invoke<SyncStatus>('cmd_sync_now');
+            setSyncStatus(status);
+            if (status.last_error) toast.error(status.last_error);
+            else toast.success(`Sync complete · ${status.uploaded} uploaded · ${status.downloaded} downloaded`);
+        } catch (error) {
+            toast.error(`Sync failed: ${String(error)}`);
+        } finally {
+            setSyncBusy(false);
+        }
+    }, []);
 
     // Transcode cache state
     const [transcodeCache, setTranscodeCache] = useState<DetailedCacheInfo | null>(null);
@@ -728,6 +784,47 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     <HardDrive className="w-3.5 h-3.5" />
                                     {t('settings.storage')}
                                 </h3>
+
+                                <div className="p-4 rounded-xl bg-gradient-to-br from-telegram-primary/10 to-telegram-secondary/10 border border-telegram-primary/20 space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-start gap-3 min-w-0">
+                                            <div className="p-2 rounded-lg bg-telegram-primary/15">
+                                                <RefreshCw className={`w-4 h-4 text-telegram-primary ${syncBusy || syncStatus?.running ? 'animate-spin' : ''}`} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm text-telegram-text font-semibold">Telegram Drive folder</p>
+                                                <p className="text-xs text-telegram-subtext mt-0.5">Keep Saved Messages and Drive folders available on this computer.</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => saveSyncConfig({ ...syncConfig, enabled: !syncConfig.enabled })}
+                                            className={`relative w-10 h-6 rounded-full transition ${syncConfig.enabled ? 'bg-telegram-primary' : 'bg-telegram-border'}`}
+                                            aria-label="Toggle folder sync"
+                                        >
+                                            <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${syncConfig.enabled ? 'left-5' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+                                    <button onClick={chooseSyncFolder} className="w-full text-left px-3 py-2.5 rounded-lg bg-telegram-bg/60 border border-telegram-border hover:border-telegram-primary/40 transition">
+                                        <p className="text-[10px] uppercase tracking-wider text-telegram-subtext">Local folder</p>
+                                        <p className="text-xs text-telegram-text mt-1 truncate">{syncConfig.local_path || 'Choose a folder…'}</p>
+                                    </button>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className={`text-xs ${syncStatus?.last_error ? 'text-red-400' : 'text-telegram-subtext'}`}>
+                                            {syncStatus?.last_error
+                                                ? syncStatus.last_error
+                                                : syncStatus?.last_sync
+                                                    ? `Last sync ${new Date(syncStatus.last_sync * 1000).toLocaleString()}`
+                                                    : 'Not synced yet'}
+                                        </p>
+                                        <button
+                                            disabled={syncBusy || !syncConfig.local_path}
+                                            onClick={syncNow}
+                                            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-telegram-primary text-slate-950 hover:brightness-110 disabled:opacity-40 transition"
+                                        >
+                                            {syncBusy ? 'Syncing…' : 'Sync now'}
+                                        </button>
+                                    </div>
+                                </div>
 
                                 {/* Transcode Cache Size */}
                                 <div className="p-3 rounded-lg bg-telegram-hover/50 space-y-2">

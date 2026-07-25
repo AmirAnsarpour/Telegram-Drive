@@ -52,7 +52,7 @@ export function TopBar({
     }, [settings.proxyEnabled, settings.proxyLiveStateEnabled]);
 
     return (
-        <header className="h-14 border-b border-telegram-border flex items-center px-4 justify-between bg-telegram-surface/80 backdrop-blur-md sticky top-0 z-10" onClick={e => e.stopPropagation()}>
+        <header className="liquid-toolbar min-h-[64px] flex items-center px-4 justify-between sticky top-0 z-20 mx-3 mt-3 rounded-[20px]" onClick={e => e.stopPropagation()}>
             <div className="flex-1 flex items-center justify-start gap-4">
                 <div className="flex items-center text-sm breadcrumbs text-telegram-subtext select-none">
                     <span className="hover:text-telegram-text cursor-pointer transition-colors">{t('common.start')}</span>
@@ -65,7 +65,7 @@ export function TopBar({
                 <input
                     type="text"
                     placeholder={t('common.search_placeholder')}
-                    className="w-full bg-telegram-hover border border-telegram-border rounded-lg px-3 py-1.5 text-sm text-telegram-text placeholder:text-telegram-subtext focus:outline-none focus:border-telegram-primary/50 transition-colors"
+                    className="ios-search w-full rounded-full px-4 py-2 text-sm text-telegram-text placeholder:text-telegram-subtext focus:outline-none transition-all"
                     value={searchTerm}
                     onChange={(e) => onSearchChange(e.target.value)}
                 />

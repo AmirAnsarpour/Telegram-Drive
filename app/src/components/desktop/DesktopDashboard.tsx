@@ -85,7 +85,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
     const { data: allFiles = [], isLoading, error } = useQuery({
         queryKey: ['files', activeFolderId],
         queryFn: async () => {
-            let accumulatedFiles: any[] = [];
+            const accumulatedFiles = new Map<number, any>();
             queryClient.setQueryData(['files', activeFolderId], []);
 
             const unlisten = await listen<any>('folder-load-chunk', (event) => {
@@ -96,14 +96,14 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                         sizeStr: formatBytes(f.size),
                         type: (f.icon_type as TelegramFile['type']) || 'file'
                     }));
-                    accumulatedFiles = [...accumulatedFiles, ...newChunk];
-                    queryClient.setQueryData(['files', activeFolderId], accumulatedFiles);
+                    for (const file of newChunk) accumulatedFiles.set(file.id, file);
+                    queryClient.setQueryData(['files', activeFolderId], Array.from(accumulatedFiles.values()));
                 }
             });
 
             try {
                 await invoke('cmd_get_files', { folderId: activeFolderId });
-                return accumulatedFiles;
+                return Array.from(accumulatedFiles.values());
             } finally {
                 unlisten();
             }
@@ -547,7 +547,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     return (
         <div
-            className="flex h-screen w-full overflow-hidden bg-telegram-bg relative"
+            className="ios26-shell flex h-screen w-full overflow-hidden bg-telegram-bg relative p-2 gap-2"
             onDragOver={handleRootDragOver}
             onDragEnter={handleRootDragEnter}
         >
@@ -662,7 +662,7 @@ export function Dashboard({ onLogout }: { onLogout: () => void }) {
                 onDeleteGroup={handleDeleteGroup}
             />
 
-            <main className="flex-1 flex flex-col">
+            <main className="content-canvas flex-1 flex flex-col min-w-0 overflow-hidden rounded-[24px]">
                 <TopBar
                     currentFolderName={currentFolderName}
                     selectedIds={selectedIds}

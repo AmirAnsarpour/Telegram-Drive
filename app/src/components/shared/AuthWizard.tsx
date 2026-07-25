@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Key, Lock, ArrowRight, Settings, ShieldCheck, Sun, Moon, HelpCircle, ExternalLink, X, Heart, QrCode } from "lucide-react";
+import { Phone, Key, Lock, ArrowRight, ShieldCheck, Sun, Moon, HelpCircle, ExternalLink, X, Heart, QrCode, Cloud, Zap, HardDrive, Check } from "lucide-react";
 import { load } from '@tauri-apps/plugin-store';
 import { useTheme } from '../../context/ThemeContext';
 import { open } from '@tauri-apps/plugin-shell';
@@ -26,7 +26,7 @@ function AuthThemeToggle() {
     );
 }
 export function AuthWizard({ onLogin }: { onLogin: () => void }) {
-    const isBrowser = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window);
+    const isBrowser = typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window) && !import.meta.env.DEV;
 
     if (isBrowser) {
         return (
@@ -264,20 +264,56 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
     };
 
     return (
-        <div className="h-full w-full auth-gradient flex items-center justify-center p-6 pt-[calc(1.5rem+env(safe-area-inset-top,24px))] relative">
+        <div className="h-full w-full auth-gradient auth-grid flex items-center justify-center p-5 md:p-8 pt-[calc(1.5rem+env(safe-area-inset-top,24px))] relative overflow-y-auto">
             <AuthThemeToggle />
+
+            <section className="hidden lg:flex w-full max-w-xl pr-16 flex-col justify-center">
+                <div className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-300 mb-8">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+                    Your private cloud, on your terms
+                </div>
+                <h1 className="text-5xl xl:text-6xl font-semibold tracking-[-0.045em] text-white leading-[1.04]">
+                    Telegram storage,
+                    <span className="block bg-gradient-to-r from-sky-300 via-cyan-300 to-indigo-300 bg-clip-text text-transparent">
+                        reimagined as a drive.
+                    </span>
+                </h1>
+                <p className="mt-6 max-w-lg text-base leading-7 text-slate-400">
+                    Upload, organize, stream, and share your files through a fast native desktop experience.
+                    Your data travels directly between this device and Telegram.
+                </p>
+
+                <div className="mt-10 grid grid-cols-3 gap-3">
+                    {[
+                        { icon: Cloud, title: "Direct cloud", text: "No middleman" },
+                        { icon: Zap, title: "Native speed", text: "Built with Rust" },
+                        { icon: HardDrive, title: "One drive", text: "Files & media" },
+                    ].map(({ icon: Icon, title, text }) => (
+                        <div key={title} className="auth-feature-card rounded-2xl p-4">
+                            <Icon className="h-5 w-5 text-sky-300 mb-4" />
+                            <p className="text-sm font-semibold text-slate-100">{title}</p>
+                            <p className="mt-1 text-xs text-slate-500">{text}</p>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-8 flex items-center gap-2 text-xs text-slate-500">
+                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                    Local-first architecture · Open source · No storage subscription
+                </div>
+            </section>
 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="auth-glass p-8 rounded-3xl shadow-2xl w-full max-w-md"
+                className="auth-glass p-6 sm:p-8 rounded-[2rem] w-full max-w-[440px]"
             >
                 <div className="text-center mb-8">
-                    <div className="w-20 h-20 mb-6 mx-auto flex items-center justify-center filter drop-shadow-lg">
+                    <div className="w-16 h-16 mb-5 mx-auto flex items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400/20 to-indigo-500/20 border border-white/10 p-2.5 shadow-lg shadow-sky-950/30">
                         <img src="/logo.svg" alt="Logo" className="w-full h-full" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">Telegram Drive</h1>
-                    <p className="text-sm text-white/60 font-medium">Self-Hosted Secure Storage</p>
+                    <h1 className="text-2xl font-semibold text-white mb-1.5 tracking-tight">Welcome to Telegram Drive</h1>
+                    <p className="text-sm text-white/50">Connect your account to open your private drive</p>
                 </div>
 
                 <AnimatePresence mode="wait">
@@ -351,7 +387,7 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                                         type="submit"
                                         className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 active:scale-[0.98]"
                                     >
-                                        Configure <Settings className="w-4 h-4" />
+                                        Continue <ArrowRight className="w-4 h-4" />
                                     </button>
 
                                     <button
@@ -585,10 +621,14 @@ export function AuthWizard({ onLogin }: { onLogin: () => void }) {
                     </motion.div>
                 )}
 
-                <div className="mt-8 pt-4 border-t border-white/5 text-center">
+                <div className="mt-7 pt-4 border-t border-white/5 flex items-center justify-between">
+                    <span className="text-[11px] text-telegram-subtext flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        Credentials stay on this device
+                    </span>
                     <button
                         onClick={() => setShowDonate(true)}
-                        className="text-xs text-telegram-subtext hover:text-telegram-text transition-colors flex items-center justify-center gap-1.5 mx-auto"
+                        className="text-xs text-telegram-subtext hover:text-telegram-text transition-colors flex items-center justify-center gap-1.5"
                     >
                         <Heart className="w-3.5 h-3.5 text-red-500/80" />
                         Donate

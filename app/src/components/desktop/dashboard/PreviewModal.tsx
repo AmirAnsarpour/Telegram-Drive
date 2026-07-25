@@ -3,7 +3,7 @@ import { X, File, ChevronLeft, ChevronRight } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { TelegramFile } from '../../../types';
-import { isImageFile } from '../../../utils';
+import { isImageFile, isOfficeFile, isTextFile } from '../../../utils';
 
 const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
 const PREVIEW_CACHE_MAX_ITEMS = 8;
@@ -68,6 +68,7 @@ export function PreviewModal({ file, onClose, onNext, onPrev, currentIndex, tota
     const [src, setSrc] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [textContent, setTextContent] = useState<string | null>(null);
     const latestRequestRef = useRef(0);
 
     useEffect(() => {
@@ -86,8 +87,9 @@ export function PreviewModal({ file, onClose, onNext, onPrev, currentIndex, tota
 
             setLoading(true);
             setError(null);
+            setTextContent(null);
             try {
-                const path = await invoke<string>('cmd_get_preview', {
+                const path = await invoke<string>(isOfficeFile(file.name) ? 'cmd_get_office_preview' : 'cmd_get_preview', {
                     messageId: file.id,
                     folderId: activeFolderId
                 });
@@ -101,6 +103,11 @@ export function PreviewModal({ file, onClose, onNext, onPrev, currentIndex, tota
                         const converted = convertFileSrc(path);
                         setSrc(converted);
                         rememberPreview(key, converted);
+                        if (isTextFile(file.name)) {
+                            const response = await fetch(converted);
+                            const text = await response.text();
+                            setTextContent(text.length > 2_000_000 ? `${text.slice(0, 2_000_000)}\n\n… Preview truncated at 2 MB` : text);
+                        }
                     }
                 } else {
                     setError("Preview not available");
@@ -226,6 +233,17 @@ export function PreviewModal({ file, onClose, onNext, onPrev, currentIndex, tota
                                     forgetPreview(key);
                                     setError('Failed to render image preview');
                                 }}
+                            />
+                        ) : isTextFile(file.name) && textContent !== null ? (
+                            <div className="w-[min(1000px,90vw)] h-[82vh] rounded-2xl overflow-hidden bg-[#0b1220] border border-white/10 shadow-2xl flex flex-col">
+                                <div className="px-4 py-3 border-b border-white/10 text-sm text-white/70">{file.name}</div>
+                                <pre className="flex-1 overflow-auto p-5 text-[13px] leading-6 text-slate-200 font-mono whitespace-pre-wrap break-words selection:bg-sky-500/30">{textContent}</pre>
+                            </div>
+                        ) : isOfficeFile(file.name) ? (
+                            <iframe
+                                src={src}
+                                title={file.name}
+                                className="w-[min(1100px,92vw)] h-[84vh] rounded-2xl bg-white border-0 shadow-2xl"
                             />
                         ) : (
                             <div className="bg-[#1c1c1c] p-8 rounded-xl text-center border border-white/10 shadow-2xl">

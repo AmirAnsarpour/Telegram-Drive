@@ -17,9 +17,14 @@ use std::sync::Mutex;
 use tokio::sync::oneshot;
 
 static UPLOAD_CANCELLATIONS: OnceLock<Mutex<HashMap<String, oneshot::Sender<()>>>> = OnceLock::new();
+static TELEGRAM_UPLOAD_GUARD: OnceLock<tokio::sync::Mutex<()>> = OnceLock::new();
 
 fn get_upload_cancellations() -> &'static Mutex<HashMap<String, oneshot::Sender<()>>> {
     UPLOAD_CANCELLATIONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub(crate) fn telegram_upload_guard() -> &'static tokio::sync::Mutex<()> {
+    TELEGRAM_UPLOAD_GUARD.get_or_init(|| tokio::sync::Mutex::new(()))
 }
 
 fn url_decode(s: &str) -> String {
@@ -731,7 +736,7 @@ pub async fn cmd_cancel_transfer(
 ) -> Result<bool, String> {
     log::info!("Cancelling transfer: {}", transfer_id);
     state.cancelled_transfers.write().await.insert(transfer_id.clone());
-    if let Some(tx) = get_upload_cancellations().lock().unwrap().remove(&transfer_id) {
+    if let Some(tx) = get_upload_cancellations().lock().unwrap_or_else(|e| e.into_inner()).remove(&transfer_id) {
         let _ = tx.send(());
     }
     Ok(true)
@@ -871,10 +876,11 @@ async fn cmd_upload_file_inner(
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
     if !tid.is_empty() {
-        get_upload_cancellations().lock().unwrap().insert(tid.clone(), cancel_tx);
+        get_upload_cancellations().lock().unwrap_or_else(|e| e.into_inner()).insert(tid.clone(), cancel_tx);
     }
 
     let client_clone = client.clone();
+    let upload_guard = telegram_upload_guard().lock().await;
     let mut upload_task = tokio::spawn(async move {
         client_clone.upload_stream(&mut reader, file_size as usize, file_name).await
     });
@@ -883,7 +889,7 @@ async fn cmd_upload_file_inner(
         tokio::select! {
             res = &mut upload_task => {
                 if !tid.is_empty() {
-                    get_upload_cancellations().lock().unwrap().remove(&tid);
+                    get_upload_cancellations().lock().unwrap_or_else(|e| e.into_inner()).remove(&tid);
                 }
                 res.map_err(|e| {
                     bw_state.release_up(size);
@@ -900,6 +906,7 @@ async fn cmd_upload_file_inner(
             }
         }
     };
+    drop(upload_guard);
 
     // Stop progress reporter
     if let Some(t) = progress_task { t.abort(); }
@@ -2455,7 +2462,7 @@ pub async fn cmd_upload_from_url(
     }
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
-    get_upload_cancellations().lock().unwrap().insert(transfer_id.clone(), cancel_tx);
+    get_upload_cancellations().lock().unwrap_or_else(|e| e.into_inner()).insert(transfer_id.clone(), cancel_tx);
 
     let client_clone = client.clone();
     let file_name = server_filename.unwrap_or_else(|| {
@@ -2477,7 +2484,7 @@ pub async fn cmd_upload_from_url(
     let uploaded_file = {
         tokio::select! {
             res = &mut upload_task => {
-                get_upload_cancellations().lock().unwrap().remove(&transfer_id);
+                get_upload_cancellations().lock().unwrap_or_else(|e| e.into_inner()).remove(&transfer_id);
                 match res {
                     Ok(Ok(file)) => file,
                     Ok(Err(e)) => {

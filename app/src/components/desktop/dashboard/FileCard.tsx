@@ -121,9 +121,11 @@ export function FileCard({ file, onDelete, onDownload, onPreview, onShare, isSel
             }}
         >
             <motion.div
-                whileHover={{ y: -4 }}
-                className={`group cursor-pointer bg-telegram-surface rounded-xl overflow-hidden border hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)] transition-all relative
-                ${isSelected ? 'border-telegram-primary bg-telegram-primary/5 ring-1 ring-telegram-primary' : 'border-telegram-border hover:border-telegram-primary/50'}
+                whileHover={{ y: -3, scale: 1.008 }}
+                whileTap={{ scale: 0.985 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                className={`ios-file-card group cursor-pointer rounded-[22px] overflow-hidden border transition-all relative
+                ${isSelected ? 'is-selected border-telegram-primary bg-telegram-primary/5 ring-2 ring-telegram-primary/30' : 'border-telegram-border hover:border-white/20'}
                 ${isDragOver ? 'ring-2 ring-telegram-primary bg-telegram-primary/20 scale-105' : ''}`}
                 style={height ? { height: `${height}px` } : { aspectRatio: '4/3' }}
             >
@@ -156,13 +158,13 @@ export function FileCard({ file, onDelete, onDownload, onPreview, onShare, isSel
                         e.stopPropagation();
                         if (onToggleSelection) onToggleSelection();
                     }}
-                    className={`absolute top-2 left-2 w-5 h-5 rounded-full border flex items-center justify-center transition-all z-10 cursor-pointer ${isSelected ? 'bg-telegram-primary border-telegram-primary' : 'border-white/50 bg-black/30 opacity-0 group-hover:opacity-100'}`}
+                    className={`absolute top-3 left-3 w-6 h-6 rounded-full border flex items-center justify-center transition-all z-10 cursor-pointer backdrop-blur-xl ${isSelected ? 'bg-telegram-primary border-telegram-primary' : 'border-white/35 bg-black/20 opacity-0 group-hover:opacity-100'}`}
                 >
-                    {isSelected && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-slate-950" />}
                 </div>
 
                 {/* File info overlay at bottom */}
-                <div className={`absolute bottom-0 left-0 right-0 p-3 ${thumbnail ? 'text-white' : 'text-telegram-text'}`}>
+                <div className={`file-card-caption absolute bottom-0 left-0 right-0 px-3.5 py-3 ${thumbnail ? 'text-white' : 'text-telegram-text'}`}>
                     <h3 className="text-sm font-medium truncate w-full min-w-0" title={file.name}>{file.name}</h3>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 w-full min-w-0 overflow-hidden">
                         <p className={`text-xs shrink-0 ${thumbnail ? 'text-white/70' : 'text-telegram-subtext'}`}>{file.sizeStr}</p>
@@ -181,7 +183,7 @@ export function FileCard({ file, onDelete, onDownload, onPreview, onShare, isSel
                 </div>
 
                 {/* Quick actions on hover */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+                <div className="file-card-actions absolute top-3 right-3 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all flex gap-1 z-10 rounded-full p-1">
                     <button onClick={(e) => { e.stopPropagation(); if (onPreview) onPreview() }} className="file-action-btn p-1 bg-black/50 rounded-full hover:bg-telegram-primary hover:text-white text-white/70" title="Preview">
                         <Eye className="w-3 h-3" />
                     </button>

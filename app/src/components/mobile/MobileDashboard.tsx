@@ -224,7 +224,7 @@ export default function MobileDashboard({ onLogout }: { onLogout?: () => void })
   const { data: allFiles = [], isLoading } = useQuery({
     queryKey: ['files', activeFolderId],
     queryFn: async () => {
-      let accumulatedFiles: any[] = [];
+      const accumulatedFiles = new Map<number, any>();
       queryClient.setQueryData(['files', activeFolderId], []);
 
       const unlisten = await listen<any>('folder-load-chunk', (event) => {
@@ -235,14 +235,14 @@ export default function MobileDashboard({ onLogout }: { onLogout?: () => void })
             sizeStr: formatBytes(f.size),
             type: f.icon_type || (f.name.endsWith('/') ? 'folder' : 'file')
           }));
-          accumulatedFiles = [...accumulatedFiles, ...newChunk];
-          queryClient.setQueryData(['files', activeFolderId], accumulatedFiles);
+          for (const file of newChunk) accumulatedFiles.set(file.id, file);
+          queryClient.setQueryData(['files', activeFolderId], Array.from(accumulatedFiles.values()));
         }
       });
 
       try {
         await invoke('cmd_get_files', { folderId: activeFolderId });
-        return accumulatedFiles;
+        return Array.from(accumulatedFiles.values());
       } finally {
         unlisten();
       }

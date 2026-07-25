@@ -208,12 +208,12 @@ export function FileExplorer({
     return (
         <div
             ref={parentRef}
-            className="flex-1 p-6 overflow-auto custom-scrollbar"
+            className="file-canvas flex-1 px-5 pt-5 pb-6 overflow-auto custom-scrollbar"
         >
             {viewMode === 'grid' ? (
                 <>
 
-                    <div className="flex items-center gap-2 mb-4 text-xs text-telegram-subtext">
+                    <div className="liquid-controlbar flex items-center gap-2 mb-5 text-xs text-telegram-subtext rounded-full px-3 py-2 w-fit min-w-full">
                         <span>Sort by:</span>
                         <button
                             onClick={() => handleSort('name')}
